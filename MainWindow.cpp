@@ -186,10 +186,19 @@ void MainWindow::updateNewFileNames()
     ui->tableFiles->blockSignals(false);
 
     // Update buttons
-    if (checkedcount == 0)
+    if (checkedcount == 0) {
         ui->buttonUnselectAll->setDisabled(true);
-    else
+        ui->buttonRename->setDisabled(true);
+    }
+    else {
         ui->buttonUnselectAll->setEnabled(true);
+        ui->buttonRename->setEnabled(true);
+    }
+
+    if (checkedcount == 1)
+        ui->buttonDetectAssociated->setEnabled(true);
+    else
+        ui->buttonDetectAssociated->setDisabled(true);
 
     if (checkedcount == ui->tableFiles->rowCount())
         ui->buttonSelectAll->setDisabled(true);
