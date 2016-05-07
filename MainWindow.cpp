@@ -29,12 +29,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->editPrefix, &QLineEdit::textChanged, &decorator, &NameDecoration::setPrefix);
     connect(ui->editSeparator, &QLineEdit::textChanged, &decorator, &NameDecoration::setSeparator);
     connect(ui->spinParentFolder, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), &decorator, &NameDecoration::setFolderNum);
-    connect(&decorator, &NameDecoration::maxFolderChanged, ui->spinParentFolder, &QSpinBox::setMaximum);
     connect(ui->editSource, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
     connect(ui->editDestination, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
-    connect(&decorator, &NameDecoration::decorationChanged, this, &MainWindow::updateNewFileNames);
     connect(ui->checkOverwrite, &QCheckBox::toggled, this, &MainWindow::updateNewFileNames);
     connect(ui->tableFiles, &QTableWidget::cellChanged, this, &MainWindow::updateNewFileNames);
+    connect(&decorator, &NameDecoration::decorationChanged, this, &MainWindow::updateNewFileNames);
+    connect(&decorator, &NameDecoration::maxFolderChanged, ui->spinParentFolder, &QSpinBox::setMaximum);
 }
 
 MainWindow::~MainWindow()
@@ -74,13 +74,17 @@ void MainWindow::on_buttonDestination_clicked()
     QString destfolder = QFileDialog::getExistingDirectory(nullptr, tr("Destination folder"), initfolder, QFileDialog::DontUseNativeDialog);
     if (!destfolder.isEmpty() && (destfolder != ui->editDestination->text())) {
         ui->editDestination->setText(destfolder);
+        ui->checkDestination->setCheckState(Qt::Checked);
         updateNewFileNames();
     }
 }
 
-void MainWindow::on_buttonClear_clicked()
+void MainWindow::on_checkDestination_stateChanged(int state)
 {
-    ui->editDestination->clear();
+    if (state == Qt::Unchecked)
+        ui->editDestination->clear();
+    else if (ui->editDestination->text().isEmpty())
+        ui->checkDestination->setCheckState(Qt::Unchecked);
 }
 
 //
@@ -151,6 +155,8 @@ void MainWindow::updateNewFileNames()
     int numlength = 1 + log10(existingfiles.count() + ui->tableFiles->rowCount());
 
     // Create the names and fill the table
+    int checkedcount = 0;
+
     for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
         // Remove existing file name
         delete ui->tableFiles->takeItem(i, 1);
@@ -158,6 +164,8 @@ void MainWindow::updateNewFileNames()
         // Process only selected files
         if (ui->tableFiles->item(i, 0)->checkState() == Qt::Unchecked)
             continue;
+
+        checkedcount++;
 
         // Retrieve the extension of the original file
         QString extension(QFileInfo(ui->tableFiles->item(i, 0)->text()).suffix());
@@ -176,6 +184,18 @@ void MainWindow::updateNewFileNames()
     }
 
     ui->tableFiles->blockSignals(false);
+
+    // Update buttons
+    if (checkedcount == 0)
+        ui->buttonUnselectAll->setDisabled(true);
+    else
+        ui->buttonUnselectAll->setEnabled(true);
+
+    if (checkedcount == ui->tableFiles->rowCount())
+        ui->buttonSelectAll->setDisabled(true);
+    else
+        ui->buttonSelectAll->setEnabled(true);
+
 }
 
 //

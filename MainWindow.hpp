@@ -21,7 +21,7 @@ private slots:
     void on_buttonDestination_clicked();
     void on_buttonSelectAll_clicked();
     void on_buttonUnselectAll_clicked();
-    void on_buttonClear_clicked();
+    void on_checkDestination_stateChanged(int state);
 
 private:
     Ui::MainWindow *ui;
