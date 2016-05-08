@@ -1,6 +1,21 @@
+// Files Renamer., a program to sort and rename picture files
+// Copyright (C) 2016 Martial Demolins AKA Folco
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include "MainWindow.hpp"
 #include "ui_MainWindow.h"
-
 #include <QDir>
 #include <QFile>
 #include <QChar>
@@ -31,16 +46,22 @@ MainWindow::MainWindow(QWidget *parent) :
     decorator.setPrefix(ui->editPrefix->text());
     decorator.setSeparator(ui->editSeparator->text());
 
-    // Connections for some simple widgets
+    // Connections which make the decoration to change
     connect(ui->editPrefix, &QLineEdit::textChanged, &decorator, &NameDecoration::setPrefix);
     connect(ui->editSeparator, &QLineEdit::textChanged, &decorator, &NameDecoration::setSeparator);
-    connect(ui->editSource, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
-    connect(ui->editDestination, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
     connect(ui->spinParentFolder, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), &decorator, &NameDecoration::setFolderNum);
     connect(ui->checkOverwrite, &QCheckBox::toggled, this, &MainWindow::updateNewFileNames);
+
+    // Source/destination definitions
+    connect(ui->editSource, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
+    connect(ui->editDestination, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
+
+    // Table connections to handle box checking, preview and selection
     connect(ui->tableFiles, &QTableWidget::cellChanged, this, &MainWindow::updateNewFileNames);
     connect(ui->tableFiles, &QTableWidget::cellDoubleClicked, this, &MainWindow::openPreview);
     connect(ui->tableFiles, &QTableWidget::itemSelectionChanged, this, &MainWindow::updateAutoDetectButton);
+
+    // Signals thrown by the decorator when the ui must be updated
     connect(&decorator, &NameDecoration::decorationChanged, this, &MainWindow::updateNewFileNames);
     connect(&decorator, &NameDecoration::maxFolderChanged, ui->spinParentFolder, &QSpinBox::setMaximum);
 }
@@ -54,6 +75,7 @@ MainWindow::~MainWindow()
 //  Source and destination
 //
 
+// Source definition. It can't be redefined to a null path after its initial definition
 void MainWindow::on_buttonSource_clicked()
 {
     // Set the initial folder of the dialog
@@ -70,6 +92,7 @@ void MainWindow::on_buttonSource_clicked()
     }
 }
 
+// Destination definition. It can be reset to nothing if its checkbox is unchecked
 void MainWindow::on_buttonDestination_clicked()
 {
     // Set the initial folder of the dialog
@@ -87,6 +110,8 @@ void MainWindow::on_buttonDestination_clicked()
     }
 }
 
+// The destination checkbox is used to clear the destination if one has been defined.
+// If the field is empty, the checkbox is unchecked and have no effect
 void MainWindow::on_checkDestination_stateChanged(int state)
 {
     if (state == Qt::Unchecked)
@@ -95,6 +120,7 @@ void MainWindow::on_checkDestination_stateChanged(int state)
         ui->checkDestination->setCheckState(Qt::Unchecked);
 }
 
+// The destination is the source folder if no destination is specified
 QString MainWindow::realDestination()
 {
     QString destination;
@@ -110,11 +136,14 @@ QString MainWindow::realDestination()
 //  File list
 //
 
+// Called when the source or the destination path have changed
+// The decorator will decide if the decoration pattern has really changed
 void MainWindow::updateDecoratorPath()
 {
     decorator.setPath(realDestination());
 }
 
+// Clear and recreate the source file list
 void MainWindow::updateCurrentFiles()
 {
     // Disable the "cellChanged" signal
@@ -146,6 +175,8 @@ void MainWindow::updateCurrentFiles()
     updateNewFileNames();
 }
 
+// Clear and recreate the destination file list
+// It can be triggered by most of the ui changes
 void MainWindow::updateNewFileNames()
 {
     // Disable the "cellChanged" signal
@@ -230,6 +261,7 @@ void MainWindow::updateAutoDetectButton()
         ui->buttonDetectAssociated->setEnabled(true);
 }
 
+// The associated files are the ones created 10 seconds before or after the currently selected file
 void MainWindow::on_buttonDetectAssociated_clicked()
 {
     // Get the creation date of the selected file
@@ -251,6 +283,9 @@ void MainWindow::on_buttonDetectAssociated_clicked()
 // Renaming
 //
 
+// 1. Delete the destination file if one exists
+// 2. Copy and rename the selected file
+// 3. Delete the source file if requested
 void MainWindow::on_buttonRename_clicked()
 {
     for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
@@ -260,6 +295,10 @@ void MainWindow::on_buttonRename_clicked()
         QFile srcfile(QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(i, 0)->text()));
         QFile destfile(QString("%1/%2").arg(realDestination()).arg(ui->tableFiles->item(i, 1)->text()));
 
+        // Avoid to delete the file if the source and the destination files are identical
+        if (srcfile.fileName() == destfile.fileName())
+            continue;
+
         if (destfile.exists())
             destfile.remove();
 
@@ -268,8 +307,8 @@ void MainWindow::on_buttonRename_clicked()
                                       tr("Error"),
                                       tr("Error while renaming the file %1. Do you want to continue the renaming process ?").arg(srcfile.fileName()),
                                       QMessageBox::Yes,
-                                      QMessageBox::Abort)
-                    == QMessageBox::Abort)
+                                      QMessageBox::Abort
+                                      ) == QMessageBox::Abort)
                 break;
             continue;
         }
@@ -286,16 +325,15 @@ void MainWindow::on_buttonRename_clicked()
 //  Preview
 //
 
+// Open a maximized window containing the image of the double-clicked file
 void MainWindow::openPreview(int row, int)
 {
-    QWidget* win = new QWidget(nullptr);
-//    QScrollArea* sa = new QScrollArea(win);
+    QWidget* win = new QWidget;
     new QVBoxLayout(win);
-    QLabel* preview = new QLabel();
+    QLabel* preview = new QLabel;
 
     preview->setPixmap(QPixmap(QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(row, 0)->text())));
     preview->setScaledContents(true);
     win->layout()->addWidget(preview);
-    win->show();
-    preview->adjustSize();
+    win->showMaximized();
 }
