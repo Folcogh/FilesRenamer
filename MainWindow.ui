@@ -190,6 +190,9 @@
        </item>
        <item>
         <widget class="QTableWidget" name="tableFiles">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
          </property>

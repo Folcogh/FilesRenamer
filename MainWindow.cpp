@@ -4,12 +4,15 @@
 #include <QDir>
 #include <QFile>
 #include <QChar>
+#include <QLabel>
 #include <QString>
+#include <QWidget>
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QDateTime>
 #include <QFileInfo>
 #include <QByteArray>
+#include <QVBoxLayout>
 #include <QStringList>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -31,11 +34,13 @@ MainWindow::MainWindow(QWidget *parent) :
     // Connections for some simple widgets
     connect(ui->editPrefix, &QLineEdit::textChanged, &decorator, &NameDecoration::setPrefix);
     connect(ui->editSeparator, &QLineEdit::textChanged, &decorator, &NameDecoration::setSeparator);
-    connect(ui->spinParentFolder, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), &decorator, &NameDecoration::setFolderNum);
     connect(ui->editSource, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
     connect(ui->editDestination, &QLineEdit::textChanged, this, &MainWindow::updateDecoratorPath);
+    connect(ui->spinParentFolder, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), &decorator, &NameDecoration::setFolderNum);
     connect(ui->checkOverwrite, &QCheckBox::toggled, this, &MainWindow::updateNewFileNames);
     connect(ui->tableFiles, &QTableWidget::cellChanged, this, &MainWindow::updateNewFileNames);
+    connect(ui->tableFiles, &QTableWidget::cellDoubleClicked, this, &MainWindow::openPreview);
+    connect(ui->tableFiles, &QTableWidget::itemSelectionChanged, this, &MainWindow::updateAutoDetectButton);
     connect(&decorator, &NameDecoration::decorationChanged, this, &MainWindow::updateNewFileNames);
     connect(&decorator, &NameDecoration::maxFolderChanged, ui->spinParentFolder, &QSpinBox::setMaximum);
 }
@@ -190,15 +195,12 @@ void MainWindow::updateNewFileNames()
         ui->buttonRename->setEnabled(true);
     }
 
-    if (checkedcount == 1)
-        ui->buttonDetectAssociated->setEnabled(true);
-    else
-        ui->buttonDetectAssociated->setDisabled(true);
-
     if (checkedcount == ui->tableFiles->rowCount())
         ui->buttonSelectAll->setDisabled(true);
     else
         ui->buttonSelectAll->setEnabled(true);
+
+    updateAutoDetectButton();
 
     // Finnaly, re-enable the signals
     ui->tableFiles->blockSignals(false);
@@ -220,17 +222,21 @@ void MainWindow::on_buttonUnselectAll_clicked()
         ui->tableFiles->item(i, 0)->setCheckState(Qt::Unchecked);
 }
 
+void MainWindow::updateAutoDetectButton()
+{
+    if (ui->tableFiles->selectedItems().size() == 0)
+        ui->buttonDetectAssociated->setDisabled(true);
+    else
+        ui->buttonDetectAssociated->setEnabled(true);
+}
+
 void MainWindow::on_buttonDetectAssociated_clicked()
 {
     // Get the creation date of the selected file
-    QDateTime refdate;
-    for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
-        if (ui->tableFiles->item(i, 0)->checkState() == Qt::Checked) {
-            QString filename = QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(i, 0)->text());
-            refdate = QFileInfo(filename).created();
-            break;
-        }
-    }
+    QList<QTableWidgetItem*> lst = ui->tableFiles->selectedItems();
+    QTableWidgetItem* item = (lst.at(0)->column() == 0 ? lst.at(0) : lst.at(1));
+    QString filename = QString("%1/%2").arg(ui->editSource->text()).arg(item->text());
+    QDateTime refdate = QFileInfo(filename).created();
 
     // Select closely created files
     for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
@@ -271,5 +277,25 @@ void MainWindow::on_buttonRename_clicked()
         if (ui->checkDeleteSource->isChecked())
             srcfile.remove();
     }
-    updateNewFileNames();
+
+    // Will remove the files which have been moved
+    updateCurrentFiles();
+}
+
+//
+//  Preview
+//
+
+void MainWindow::openPreview(int row, int)
+{
+    QWidget* win = new QWidget(nullptr);
+//    QScrollArea* sa = new QScrollArea(win);
+    new QVBoxLayout(win);
+    QLabel* preview = new QLabel();
+
+    preview->setPixmap(QPixmap(QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(row, 0)->text())));
+    preview->setScaledContents(true);
+    win->layout()->addWidget(preview);
+    win->show();
+    preview->adjustSize();
 }

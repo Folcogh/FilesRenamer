@@ -23,7 +23,6 @@ private slots:
     void on_buttonUnselectAll_clicked();
     void on_checkDestination_stateChanged(int state);
     void on_buttonRename_clicked();
-
     void on_buttonDetectAssociated_clicked();
 
 private:
@@ -34,6 +33,8 @@ private:
     void updateCurrentFiles();
     void updateNewFileNames();
     void updateDecoratorPath();
+    void openPreview(int row, int);
+    void updateAutoDetectButton();
 };
 
 #endif // MAINWINDOW_HPP
