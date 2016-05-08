@@ -7,6 +7,7 @@
 #include <QString>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QDateTime>
 #include <QFileInfo>
 #include <QByteArray>
 #include <QStringList>
@@ -135,6 +136,7 @@ void MainWindow::updateCurrentFiles()
         ui->tableFiles->setItem(i, 0, item);
     }
 
+    ui->tableFiles->resizeColumnToContents(0);
     ui->tableFiles->blockSignals(false);
     updateNewFileNames();
 }
@@ -218,8 +220,29 @@ void MainWindow::on_buttonUnselectAll_clicked()
         ui->tableFiles->item(i, 0)->setCheckState(Qt::Unchecked);
 }
 
+void MainWindow::on_buttonDetectAssociated_clicked()
+{
+    // Get the creation date of the selected file
+    QDateTime refdate;
+    for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
+        if (ui->tableFiles->item(i, 0)->checkState() == Qt::Checked) {
+            QString filename = QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(i, 0)->text());
+            refdate = QFileInfo(filename).created();
+            break;
+        }
+    }
+
+    // Select closely created files
+    for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
+        QString filename = QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(i, 0)->text());
+        QDateTime date = QFileInfo(filename).created();
+        if ((refdate.secsTo(date) < 10) && (refdate.secsTo(date) > -10))
+            ui->tableFiles->item(i, 0)->setCheckState(Qt::Checked);
+    }
+}
+
 //
-// Rename
+// Renaming
 //
 
 void MainWindow::on_buttonRename_clicked()

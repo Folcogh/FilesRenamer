@@ -24,6 +24,8 @@ private slots:
     void on_checkDestination_stateChanged(int state);
     void on_buttonRename_clicked();
 
+    void on_buttonDetectAssociated_clicked();
+
 private:
     Ui::MainWindow *ui;
     NameDecoration decorator;

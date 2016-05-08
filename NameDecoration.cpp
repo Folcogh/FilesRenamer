@@ -38,7 +38,7 @@ void NameDecoration::setPrefix(const QString& prefix)
 }
 
 //
-//  Getters
+//  Getter
 //
 
 QString NameDecoration::decoration()
