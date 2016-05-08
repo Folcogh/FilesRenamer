@@ -2,6 +2,7 @@
 #include "ui_MainWindow.h"
 
 #include <QDir>
+#include <QFile>
 #include <QChar>
 #include <QString>
 #include <QSpinBox>
@@ -10,6 +11,7 @@
 #include <QByteArray>
 #include <QStringList>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QImageReader>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -87,10 +89,6 @@ void MainWindow::on_checkDestination_stateChanged(int state)
         ui->checkDestination->setCheckState(Qt::Unchecked);
 }
 
-//
-//  Destination logic
-//
-
 QString MainWindow::realDestination()
 {
     QString destination;
@@ -105,6 +103,11 @@ QString MainWindow::realDestination()
 //
 //  File list
 //
+
+void MainWindow::updateDecoratorPath()
+{
+    decorator.setPath(realDestination());
+}
 
 void MainWindow::updateCurrentFiles()
 {
@@ -141,10 +144,6 @@ void MainWindow::updateNewFileNames()
     // Disable the "cellChanged" signal
     ui->tableFiles->blockSignals(true);
 
-    // Early return if the table is empty
-    if (ui->tableFiles->rowCount() == 0)
-        return;
-
     // Retrieve the existing files in the destination folder, to be able to avoid overwriting
     QStringList existingfiles;
     if (!ui->checkOverwrite->isChecked())
@@ -154,7 +153,7 @@ void MainWindow::updateNewFileNames()
     int num = 1;
     int numlength = 1 + log10(existingfiles.count() + ui->tableFiles->rowCount());
 
-    // Create the names and fill the table
+    // Create the names and fill the table. checkedcount is used to enable/disable the buttons under the table
     int checkedcount = 0;
 
     for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
@@ -165,25 +164,19 @@ void MainWindow::updateNewFileNames()
         if (ui->tableFiles->item(i, 0)->checkState() == Qt::Unchecked)
             continue;
 
-        checkedcount++;
-
-        // Retrieve the extension of the original file
-        QString extension(QFileInfo(ui->tableFiles->item(i, 0)->text()).suffix());
-
         // Generate a new name until an unused one is found
+        QString extension(QFileInfo(ui->tableFiles->item(i, 0)->text()).suffix());
         QString newfilename;
         do {
             newfilename = decorator.decoration() + QString("%1.%2").arg(num, numlength, 10, QChar('0')).arg(extension);
             num++;
-        }
-        while (existingfiles.contains(newfilename));
+        } while (existingfiles.contains(newfilename));
+        checkedcount++;
 
         // Create and set the new item
         QTableWidgetItem* item = new QTableWidgetItem(newfilename);
         ui->tableFiles->setItem(i, 1, item);
     }
-
-    ui->tableFiles->blockSignals(false);
 
     // Update buttons
     if (checkedcount == 0) {
@@ -205,6 +198,8 @@ void MainWindow::updateNewFileNames()
     else
         ui->buttonSelectAll->setEnabled(true);
 
+    // Finnaly, re-enable the signals
+    ui->tableFiles->blockSignals(false);
 }
 
 //
@@ -224,10 +219,34 @@ void MainWindow::on_buttonUnselectAll_clicked()
 }
 
 //
-// Name decoration
+// Rename
 //
 
-void MainWindow::updateDecoratorPath()
+void MainWindow::on_buttonRename_clicked()
 {
-    decorator.setPath(realDestination());
+    for (int i = 0; i < ui->tableFiles->rowCount(); i++) {
+        if (ui->tableFiles->item(i, 0)->checkState() == Qt::Unchecked)
+            continue;
+
+        QFile srcfile(QString("%1/%2").arg(ui->editSource->text()).arg(ui->tableFiles->item(i, 0)->text()));
+        QFile destfile(QString("%1/%2").arg(realDestination()).arg(ui->tableFiles->item(i, 1)->text()));
+
+        if (destfile.exists())
+            destfile.remove();
+
+        if (!srcfile.copy(destfile.fileName())) {
+            if (QMessageBox::critical(this,
+                                      tr("Error"),
+                                      tr("Error while renaming the file %1. Do you want to continue the renaming process ?").arg(srcfile.fileName()),
+                                      QMessageBox::Yes,
+                                      QMessageBox::Abort)
+                    == QMessageBox::Abort)
+                break;
+            continue;
+        }
+
+        if (ui->checkDeleteSource->isChecked())
+            srcfile.remove();
+    }
+    updateNewFileNames();
 }

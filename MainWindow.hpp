@@ -22,6 +22,7 @@ private slots:
     void on_buttonSelectAll_clicked();
     void on_buttonUnselectAll_clicked();
     void on_checkDestination_stateChanged(int state);
+    void on_buttonRename_clicked();
 
 private:
     Ui::MainWindow *ui;
