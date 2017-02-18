@@ -85,7 +85,7 @@ void MainWindow::on_buttonSource_clicked()
     else
         initfolder = ui->editSource->text();
 
-    QString srcfolder = QFileDialog::getExistingDirectory(nullptr, tr("Source folder"), initfolder, QFileDialog::DontUseNativeDialog);
+    QString srcfolder = QFileDialog::getExistingDirectory(nullptr, tr("Source folder"), initfolder);
     if (!srcfolder.isEmpty() && (srcfolder != ui->editSource->text())) {
         ui->editSource->setText(srcfolder);
         updateCurrentFiles();
@@ -102,7 +102,7 @@ void MainWindow::on_buttonDestination_clicked()
     else
         initfolder = ui->editDestination->text();
 
-    QString destfolder = QFileDialog::getExistingDirectory(nullptr, tr("Destination folder"), initfolder, QFileDialog::DontUseNativeDialog);
+    QString destfolder = QFileDialog::getExistingDirectory(nullptr, tr("Destination folder"), initfolder);
     if (!destfolder.isEmpty() && (destfolder != ui->editDestination->text())) {
         ui->editDestination->setText(destfolder);
         ui->checkDestination->setCheckState(Qt::Checked);
@@ -114,10 +114,16 @@ void MainWindow::on_buttonDestination_clicked()
 // If the field is empty, the checkbox is unchecked and have no effect
 void MainWindow::on_checkDestination_stateChanged(int state)
 {
+    ui->editDestination->blockSignals(true);
+    ui->checkDestination->blockSignals(true);
+
     if (state == Qt::Unchecked)
         ui->editDestination->clear();
     else if (ui->editDestination->text().isEmpty())
         ui->checkDestination->setCheckState(Qt::Unchecked);
+
+    ui->checkDestination->blockSignals(false);
+    ui->editDestination->blockSignals(false);
 }
 
 // The destination is the source folder if no destination is specified
@@ -336,4 +342,5 @@ void MainWindow::openPreview(int row, int)
     preview->setScaledContents(true);
     win->layout()->addWidget(preview);
     win->showMaximized();
+    delete win;
 }
